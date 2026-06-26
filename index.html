@@ -163,25 +163,6 @@
         .btn-ghost   { background: rgba(241,245,249,0.08); color: var(--muted); }
         .btn-ghost:hover { background: rgba(241,245,249,0.13); }
 
-        /* ── Footer ── */
-        .footer {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 10px; align-items: center;
-            z-index: 10; pointer-events: none; white-space: nowrap;
-        }
-        .hint-chip {
-            background: rgba(30,41,59,0.72);
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            border: 1px solid var(--border); border-radius: 10px;
-            padding: 6px 13px; font-size: 11px; color: var(--muted);
-            display: flex; align-items: center; gap: 7px;
-        }
-        .kbd {
-            background: rgba(241,245,249,0.1);
-            border: 1px solid rgba(241,245,249,0.15);
-            border-radius: 5px; padding: 2px 7px;
-            font-size: 10px; font-weight: 600; color: var(--text);
-        }
 
         /* ── Animations ── */
         @keyframes panelShake {
@@ -246,11 +227,8 @@
             .stat-value { font-size: 12px; }
             .stat-label { font-size: 7.5px; letter-spacing: 0.08em; }
 
-            /* Hide logo (overlaps stats bar) and footer (keyboard hints are
-               useless on touch; footer wrapping onto 2+ rows was pushing up
-               behind the panel and hiding the Reset button) */
+            /* Hide logo — it overlaps the stats bar on narrow screens */
             .header { display: none; }
-            .footer  { display: none; }
 
             /* Centre the panel, allow scroll if it ever overflows */
             #overlay {
@@ -292,11 +270,6 @@
         @media (orientation: landscape) and (max-width: 600px) {
             .stats-row { gap: 6px; }
             .stat-card  { padding: 5px 10px; min-width: 68px; }
-            .footer { gap: 7px; flex-wrap: wrap; justify-content: center; padding: 0 12px; }
-        }
-
-        @media (max-width: 360px) {
-            .hint-chip:last-child { display: none; }
         }
     </style>
 </head>
@@ -344,11 +317,6 @@
     </div>
 </div>
 
-<footer class="footer">
-    <div class="hint-chip"><span class="kbd">Space</span> Start / React</div>
-    <div class="hint-chip"><span class="kbd">Click</span> Panel to interact</div>
-    <div class="hint-chip"><span class="kbd">R</span> Reset session</div>
-</footer>
 
 <div id="game-status" class="game-status"></div>
 
