@@ -77,6 +77,7 @@
             position: fixed; inset: 0; z-index: 5;
             display: flex; align-items: center; justify-content: center;
             padding: 90px 20px 80px;
+            transition: opacity 0.3s ease;
         }
 
         /* ── Game panel ── */
@@ -199,6 +200,44 @@
         }
         .anim-pulse { animation: waitPulse 1.25s ease-in-out infinite; }
 
+        /* ── In-game status chip (shown while panel is hidden) ── */
+        .game-status {
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+            background: rgba(30,41,59,0.82);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border); border-radius: 100px;
+            padding: 8px 22px;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 0.1em; text-transform: uppercase;
+            color: var(--muted); white-space: nowrap;
+            pointer-events: none; z-index: 10;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .game-status.active { opacity: 1; }
+
+        /* ── Idle-state instructions ── */
+        .instructions {
+            list-style: none;
+            margin: 0 0 22px; padding: 0;
+            text-align: left;
+        }
+        .instr-step {
+            display: flex; align-items: flex-start; gap: 11px;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px; color: var(--muted); line-height: 1.5;
+        }
+        .instr-step:first-child { padding-top: 0; }
+        .instr-step:last-child  { border-bottom: none; padding-bottom: 0; }
+        .instr-num {
+            flex-shrink: 0;
+            width: 22px; height: 22px;
+            background: rgba(241,245,249,0.08); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 700; color: var(--text);
+            margin-top: 2px;
+        }
+
         /* ── Responsive: portrait phones ── */
         @media (orientation: portrait) and (max-width: 600px) {
             /* Compact stats bar */
@@ -242,6 +281,11 @@
             .perf-badge    { margin-bottom: 12px; padding: 3px 10px; font-size: 10px; }
             .btn           { padding: 10px 18px; font-size: 13px; }
             .btn-group     { flex-wrap: wrap; }
+
+            .game-status   { bottom: 16px; padding: 6px 16px; font-size: 10px; }
+            .instructions  { margin-bottom: 14px; }
+            .instr-step    { font-size: 11px; padding: 7px 0; gap: 8px; }
+            .instr-num     { width: 18px; height: 18px; font-size: 9px; }
         }
 
         /* ── Responsive: landscape phones (width only, no height constraint) ── */
@@ -305,6 +349,8 @@
     <div class="hint-chip"><span class="kbd">Click</span> Panel to interact</div>
     <div class="hint-chip"><span class="kbd">R</span> Reset session</div>
 </footer>
+
+<div id="game-status" class="game-status"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -547,6 +593,9 @@ function transition(next) {
     } else if (next !== 'result') {
         startTime = null;
     }
+    const inGame = next === 'waiting' || next === 'ready';
+    setOverlayActive(!inGame);
+    updateGameStatus(next);
     const vKey = { idle:'idle', waiting:'wait', ready:'ready', false_start:'error', result:'result' };
     setVisuals(vKey[next]);
     renderUI();
@@ -599,17 +648,20 @@ function interact() {
 /* ================================================================
    UI RENDERING
 ================================================================ */
-const elPanel    = document.getElementById('panel');
-const elHeading  = document.getElementById('heading');
-const elCaption  = document.getElementById('caption');
-const elTimerBlk = document.getElementById('timer-block');
-const elTimerNum = document.getElementById('timer-number');
-const elBadge    = document.getElementById('badge-wrap');
-const elMainBtn  = document.getElementById('main-btn');
-const elResetBtn = document.getElementById('reset-btn');
-const elAttempts = document.getElementById('stat-attempts');
-const elAvg      = document.getElementById('stat-avg');
-const elBest     = document.getElementById('stat-best');
+const elPanel      = document.getElementById('panel');
+const elOverlay    = document.getElementById('overlay');
+const elHeading    = document.getElementById('heading');
+const elCaption    = document.getElementById('caption');
+const elTimerBlk   = document.getElementById('timer-block');
+const elTimerNum   = document.getElementById('timer-number');
+const elBadge      = document.getElementById('badge-wrap');
+const elMainBtn    = document.getElementById('main-btn');
+const elResetBtn   = document.getElementById('reset-btn');
+const elAttempts   = document.getElementById('stat-attempts');
+const elAvg        = document.getElementById('stat-avg');
+const elBest       = document.getElementById('stat-best');
+const elEyebrow    = document.querySelector('.panel-eyebrow');
+const elGameStatus = document.getElementById('game-status');
 
 const PERF = [
     { max: 150,      label: 'Superhuman',      color: '#10B981' },
@@ -622,6 +674,26 @@ const PERF = [
 
 function getPerf(ms) { return PERF.find(p => ms < p.max); }
 
+function setOverlayActive(show) {
+    elOverlay.style.opacity       = show ? '' : '0';
+    elOverlay.style.pointerEvents = show ? '' : 'none';
+}
+
+function updateGameStatus(state) {
+    if (state === 'waiting') {
+        elGameStatus.textContent   = '● Waiting for signal…';
+        elGameStatus.style.color   = '';
+        elGameStatus.classList.add('active');
+    } else if (state === 'ready') {
+        elGameStatus.textContent   = '● React now!';
+        elGameStatus.style.color   = 'var(--ready)';
+        elGameStatus.classList.add('active');
+    } else {
+        elGameStatus.classList.remove('active');
+        elGameStatus.style.color   = '';
+    }
+}
+
 function setBtn(el, { text, bg, color = '#fff', border = 'none', shadow = '' }) {
     el.textContent      = text;
     el.style.background = bg;
@@ -632,18 +704,35 @@ function setBtn(el, { text, bg, color = '#fff', border = 'none', shadow = '' }) 
 
 function renderUI() {
     // Reset
-    elPanel.className    = 'panel';
-    elHeading.className  = 'state-heading';
-    elTimerBlk.className = 'timer-block';
-    elBadge.innerHTML    = '';
+    elPanel.className     = 'panel';
+    elHeading.className   = 'state-heading';
+    elTimerBlk.className  = 'timer-block';
+    elBadge.innerHTML     = '';
+    elEyebrow.textContent = 'Tap anywhere on the panel to interact';
 
     const hasHistory = attempts > 0;
 
     switch (gameState) {
         case 'idle':
-            elHeading.textContent = 'Ready?';
+            elEyebrow.textContent = 'How to play';
+            elHeading.textContent = 'Ready to Play?';
             elHeading.style.color = 'var(--text)';
-            elCaption.textContent = 'Click the button or press Space to start';
+            elCaption.textContent = 'Measure your visual reaction speed — milliseconds count.';
+            elBadge.innerHTML = `
+                <ol class="instructions">
+                    <li class="instr-step">
+                        <span class="instr-num">1</span>
+                        <span>Press <strong>Start</strong> — the shape begins moving and changes color</span>
+                    </li>
+                    <li class="instr-step">
+                        <span class="instr-num">2</span>
+                        <span>Wait for it to flash <strong style="color:var(--ready)">green</strong> — clicking before = false start</span>
+                    </li>
+                    <li class="instr-step">
+                        <span class="instr-num">3</span>
+                        <span>Tap, click, or press <strong>Space</strong> the instant you see green</span>
+                    </li>
+                </ol>`;
             setBtn(elMainBtn, { text: 'Start Game', bg: 'var(--ready)' });
             elResetBtn.style.display = hasHistory ? '' : 'none';
             break;
@@ -743,6 +832,17 @@ document.addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); interact(); }
     if (e.code === 'KeyR')  { resetSession(); }
 });
+
+// When the panel is hidden (waiting/ready), the whole screen is the tap target
+document.addEventListener('click', () => {
+    if (gameState === 'waiting' || gameState === 'ready') interact();
+});
+document.addEventListener('touchstart', e => {
+    if (gameState === 'waiting' || gameState === 'ready') {
+        e.preventDefault();
+        interact();
+    }
+}, { passive: false });
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
