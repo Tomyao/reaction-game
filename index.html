@@ -783,6 +783,7 @@ function updateStats() {
 ================================================================ */
 elPanel.addEventListener('click', e => {
     if (e.target === elMainBtn || e.target === elResetBtn) return;
+    e.stopPropagation();
     interact();
 });
 
